@@ -2,4 +2,5 @@
 ## Integrantes
 - Lucía Jauregui Heisterborg
 - Norberto Narvaez
-- Sol Vera
+- Nahir Sol Vera
+  
