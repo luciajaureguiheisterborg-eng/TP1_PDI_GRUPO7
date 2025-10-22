@@ -24,6 +24,6 @@ pip install opencv-python numpy matplotlib
 
 ## Instrucciones de ejecución
 
-1.  git clone 
+1.  git clone https://github.com/luciajaureguiheisterborg-eng/TP1_PDI_GRUPO7.git
 2.  python Problema1-TP-PDI-G7
 3.  python Problema2-TP-PDI-G7
