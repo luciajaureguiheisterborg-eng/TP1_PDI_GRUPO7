@@ -6,18 +6,9 @@ import numpy as np
 import matplotlib.pyplot as plt
 import csv 
 
-# Tipo de cada formulario :
-tipos_formularios = {
-    "formulario_01.png": "A",
-    "formulario_02.png": "A",
-    "formulario_03.png": "A",
-    "formulario_04.png": "B",
-    "formulario_05.png": "B"
-} 
+#Tipo de cada formulario :
+tipos_formularios = {"formulario_01.png": "A","formulario_02.png": "A","formulario_03.png": "A","formulario_04.png": "B", "formulario_05.png": "B"} 
 
-# --------------------------------------
-# FUNCIONES AUXILIARES DE VISUALIZACIÓN
-# --------------------------------------
 def imshow(img, titulo="Imagen", color=False):
     plt.figure(figsize=(10,5))
     if color:
@@ -28,9 +19,7 @@ def imshow(img, titulo="Imagen", color=False):
     plt.axis("off")
     plt.show()
 
-# --------------------------------------
-# FUNCIONES PARA DETECCIÓN DE LÍNEAS
-# --------------------------------------
+#Funciones para deteccion de lineas
 def compactar_lineas(lineas, distancia_minima=100):
     """
     Agrupa coordenadas cercanas para que cada línea se represente con un solo valor.
@@ -61,9 +50,7 @@ def filtrar_lineas_verticales_por_longitud(img_bin, columnas, fraccion_minimma_l
     columnas_filtradas = [x for x, l in zip(columnas, longitudes) if l >= fraccion_minimma_long * longitud_max]
     return np.array(columnas_filtradas)
 
-# --------------------------------------
-# FUNCIONES PARA EXTRAER CELDAS
-# --------------------------------------
+#Extraer cada celda
 def extraer_celda_interior(img, fila_inicio, fila_fin, col_inicio, col_fin, margen=10):
     """
     Recorta la celda de la imagen evitando los bordes de líneas.
@@ -74,21 +61,7 @@ def extraer_celda_interior(img, fila_inicio, fila_fin, col_inicio, col_fin, marg
         return celda
     return celda
 
-def celda_con_contenido(celda, umbral_relativo=0.002):
-    """
-    Devuelve True si hay escritura o marca visible en la celda.
-    umbral_relativo: fracción mínima de píxeles blancos respecto al total.
-    """
-    if celda.size == 0:
-        return False
-    #Contamos píxeles blancos
-    blancos = np.sum(celda == 255)
-    rel_area = blancos / celda.size
-    return rel_area > umbral_relativo
-
-# --------------------------------------
-# FUNCIONES DE VALIDACIÓN DE PREGUNTAS
-# --------------------------------------
+#validacion de campos
 def contar_marcas_preguntas(celda, umbral_area=20):
     """
     Cuenta cuántas marcas hay en la celda según contornos detectados.
@@ -100,44 +73,6 @@ def contar_marcas_preguntas(celda, umbral_area=20):
     #filtramos contornos muy pequeños
     contornos_validos = [c for c in contornos if cv2.contourArea(c) > umbral_area]
     return len(contornos_validos)
-
-def validar_pregunta_completa(celda, numero, umbral_area=20):
-    """
-    Valida la celda de una pregunta según cantidad de marcas detectadas.
-    """
-    if celda.size == 0 or celda.size == 1:
-        print(f"> Pregunta {numero}: CELDA VACIA")
-        return
-    
-    nro_marcas = contar_marcas_preguntas(celda, umbral_area)
-    
-    if nro_marcas == 1:
-        print(f"> Pregunta {numero}: BIEN (1 marca detectada)")
-    elif nro_marcas == 0:
-        print(f"> Pregunta {numero}: MAL (sin marca)")
-    else:
-        print(f"> Pregunta {numero}: MAL ({nro_marcas} marcas detectadas)")
-
-# --------------------------------------
-# FUNCIONES PARA VALIDACIÓN DE TEXTO
-# --------------------------------------
-def contar_componentes(celda_bin, area_minima=15):
-    """
-    Cuenta las componentes conectadas en una celda para estimar si hay texto.
-    """
-    #asegurar formato bin
-    _, binaria = cv2.threshold(celda_bin, 128, 255, cv2.THRESH_BINARY)
-    num, labels, stats, centroids = cv2.connectedComponentsWithStats(binaria, connectivity=8)
-    #filtrar pequeñas manchas
-    areas_validas = [stats[i, cv2.CC_STAT_AREA] for i in range(1, num) if stats[i, cv2.CC_STAT_AREA] > area_minima]  
-    return len(areas_validas)
-
-def validar_celda_texto(celda, minimo=3, maximo=30):
-    """
-    Devuelve True si la cantidad de trazos está entre los límites esperados.
-    """
-    n = contar_componentes(celda)
-    return minimo <= n <= maximo
 
 def cajas_componentes(celda_bin, area_min=35):
     """
@@ -164,14 +99,11 @@ def hay_espacio(cajas, factor_espacio=1.25):
         gap = x_cur - (x_prev + w_prev)
         espacios.append(gap)
 
-    # se considera "espacio" si hay un gap mucho mayor que el ancho promedio de las letras
+    #se considera "espacio" si hay un gap mucho mayor que el ancho promedio de las letras
     anchos = [c[2] for c in cajas]
     ancho_prom = np.median(anchos)
     return any(g > factor_espacio * ancho_prom for g in espacios)
 
-# --------------------------------------
-# FUNCIONES DE VALIDACIÓN DE CAMPOS
-# --------------------------------------
 def validar_nombre_apellido(celda):
     cajas = cajas_componentes(celda)
     n_letras = len(cajas)
@@ -193,7 +125,6 @@ def validar_edad(celda):
 def validar_mail(celda):
     cajas = cajas_componentes(celda)
     n = len(cajas)
-    # Factor de espacio razonable, y guiones bajos ignorados en hay espacio
     espacio = hay_espacio(cajas, 3.0)
     if espacio:
         return "MAL"
@@ -206,7 +137,6 @@ def validar_legajo(celda):
     n = len(cajas_componentes(celda))
     if 6 <= n <= 7:
         return "OK"
-
     else:
         return "MAL"
 
@@ -217,9 +147,6 @@ def validar_comentarios(celda):
     else:
         return "MAL"
 
-# -------------------------------------------
-# FUNCION PRINCIPAL PARA PROCESAR FORMULARIOS
-# -------------------------------------------
 def procesar_formularios(tipo_seleccionado="TODOS", mostrar_imagen=True):
     """
     Procesa los formularios del tipo indicado.
@@ -232,19 +159,15 @@ def procesar_formularios(tipo_seleccionado="TODOS", mostrar_imagen=True):
                    if tipo_seleccionado == "TODOS" or t == tipo_seleccionado]
     resultados = []
 
-    print("\n INICIANDO VALIDACIÓN DE FORMULARIOS...")
-    print("=" * 60)
-
     for archivo in formularios:
         img = cv2.imread(archivo, cv2.IMREAD_GRAYSCALE)
         if img is None:
             print(f"No se encontró {archivo}")
             continue
 
-        # Binarización
+        #binarizcion
         img_binaria = cv2.adaptiveThreshold( img, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY_INV, 15, 8)
 
-        # Detección de líneas 
         img_th_ones = (img_binaria > 0).astype(np.uint8)
         sum_filas = np.sum(img_th_ones, axis=1)
         sum_columnas = np.sum(img_th_ones, axis=0)
@@ -256,7 +179,6 @@ def procesar_formularios(tipo_seleccionado="TODOS", mostrar_imagen=True):
         columnas_compactas = compactar_lineas(columnas, distancia_minima=60)
         columnas_l = filtrar_lineas_verticales_por_longitud(img_binaria, columnas_compactas, fraccion_minimma_long=0.85)
 
-        # Recorte de celdas
         celda_nombre = extraer_celda_interior(img_binaria, filas_compactas[1], filas_compactas[2], columnas_l[1], columnas_l[2])
         celda_edad   = extraer_celda_interior(img_binaria, filas_compactas[2], filas_compactas[3], columnas_l[1], columnas_l[2])
         celda_mail   = extraer_celda_interior(img_binaria, filas_compactas[3], filas_compactas[4], columnas_l[1], columnas_l[2])
@@ -266,7 +188,6 @@ def procesar_formularios(tipo_seleccionado="TODOS", mostrar_imagen=True):
         preg2 = extraer_celda_interior(img_binaria, filas_compactas[7], filas_compactas[8], columnas_l[1], columnas_l[2])
         preg3 = extraer_celda_interior(img_binaria, filas_compactas[8], filas_compactas[9], columnas_l[1], columnas_l[2])
 
-        # --- Validaciones ---
         nombre_ok = validar_nombre_apellido(celda_nombre)
         edad_ok = validar_edad(celda_edad)
         mail_ok = validar_mail(celda_mail)
@@ -283,7 +204,6 @@ def procesar_formularios(tipo_seleccionado="TODOS", mostrar_imagen=True):
         preg2_r = resultado_pregunta(preg2)
         preg3_r = resultado_pregunta(preg3)
 
-        # Guardar resultados en memoria
         resultados.append({"Formulario": archivo,"Nombre y Apellido": nombre_ok,"Edad": edad_ok,"Mail": mail_ok,"Legajo": legajo_ok,"Comentarios": coment_ok,"Pregunta 1": preg1_r,"Pregunta 2": preg2_r,"Pregunta 3": preg3_r})
 
     nombres_recortados = []
@@ -292,7 +212,7 @@ def procesar_formularios(tipo_seleccionado="TODOS", mostrar_imagen=True):
     for res in resultados:
         archivo = res["Formulario"]
         img = cv2.imread(archivo, cv2.IMREAD_GRAYSCALE)
-        # --- Recorte de la celda de nombre ---
+        #recorte de la celda de nombre 
         img_binaria = cv2.adaptiveThreshold(img, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
                                             cv2.THRESH_BINARY_INV, 15, 8)
         img_th_ones = (img_binaria > 0).astype(np.uint8)
@@ -308,14 +228,14 @@ def procesar_formularios(tipo_seleccionado="TODOS", mostrar_imagen=True):
                                               columnas_l[1], columnas_l[2])
         nombres_recortados.append(celda_nombre)
 
-        # Determinar si completó bien o mal 
+        #Determinar si completó bien o mal 
         valores = [v for k, v in res.items() if k != "Formulario"]
         completo_bien = all(v == "OK" for v in valores)
         estado = "completo bien" if completo_bien else "completo mal"
         color = (0, 150, 0) if completo_bien else (0, 0, 255)
         estados.append((estado, color))
 
-    # Calcular tamaño de imagen final 
+    #tamaño de imagen final 
     alturas = [c.shape[0] for c in nombres_recortados]
     anchos = [c.shape[1] for c in nombres_recortados]
     alto_total = sum(alturas) + 80 * len(nombres_recortados) + 80
@@ -324,20 +244,17 @@ def procesar_formularios(tipo_seleccionado="TODOS", mostrar_imagen=True):
     resumen = np.ones((alto_total, ancho_max, 3), dtype=np.uint8) * 255
     y = 60
 
-    # Dibujar filas 
     for celda, (estado, color) in zip(nombres_recortados, estados):
         celda_bgr = cv2.cvtColor(celda, cv2.COLOR_GRAY2BGR)
         h, w = celda_bgr.shape[:2]
         resumen[y:y+h, 20:20+w] = celda_bgr
 
-        cv2.putText(resumen, estado, (w + 60, y + h // 2),
-                    cv2.FONT_HERSHEY_SIMPLEX, 0.9, color, 2)
+        cv2.putText(resumen, estado, (w + 60, y + h // 2), cv2.FONT_HERSHEY_SIMPLEX, 0.9, color, 2)
         y += h + 60
 
-    cv2.putText(resumen, "Resumen general de formularios",
-                (20, 35), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 0), 3)
+    cv2.putText(resumen, "Resumen general de formularios",(20, 35), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 0), 3)
 
-    # Mostrar y guardar 
+
     if mostrar_imagen:
         imshow(cv2.cvtColor(resumen, cv2.COLOR_BGR2RGB), "Resumen de formularios")
         cv2.imwrite("resumen_resultados.png", resumen)
@@ -345,17 +262,15 @@ def procesar_formularios(tipo_seleccionado="TODOS", mostrar_imagen=True):
 
     return resultados
 
-# --------------------------------------
-# EJECUCIÓN
-# --------------------------------------
-if __name__ == "__main__":
+
+if True:
     tipo = input("Ingrese tipo de formulario (A/B/C/TODOS): ").upper()
     if tipo not in ["A", "B", "C", "TODOS"]:
         tipo = "TODOS"
 
     resultados = procesar_formularios(tipo)
 
-    # Mostrar por campo, en orden
+    
     for res in resultados:
         print(f"\n--- {res['Formulario']} ---")
         for campo, valor in res.items():
